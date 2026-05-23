@@ -4,3 +4,9 @@ target/
 *.iml
 *.iws
 *.ipr
+
+.vscode/
+
+.DS_Store
+
+*.log
