@@ -24,10 +24,7 @@ public class AuthService {
         this.jwtService = jwtService;
     }
 
-    // Registra un usuario nuevo, por defecto todos son CUSTOMER
-    // La contraseña se guarda encriptada con BCrypt
     public AuthResponse register(RegisterRequest request) {
-        // Verifico que el email no este repetido
         if (userRepository.existsByEmail(request.email())) {
             throw new EmailAlreadyExistsException("El email ya esta registrado: " + request.email());
         }
@@ -36,22 +33,19 @@ public class AuthService {
                 .name(request.name())
                 .email(request.email())
                 .password(passwordEncoder.encode(request.password()))
-                .role(Role.CUSTOMER) // todos entran como cliente normal
+                .role(Role.CUSTOMER)
                 .build();
 
         User saved = userRepository.save(user);
-        String token = jwtService.generateToken(saved); // genero el token para que no tenga que loguearse
+        String token = jwtService.generateToken(saved);
 
         return new AuthResponse(token, saved.getEmail(), saved.getRole().name());
     }
 
-    // Loguea al usuario con email y contraseña, devuelve el token JWT
     public AuthResponse login(LoginRequest request) {
-        // Busco el usuario por email, si no existe tiro error generico por seguridad
         User user = userRepository.findByEmail(request.email())
                 .orElseThrow(() -> new BadCredentialsException("Credenciales invalidas"));
 
-        // Comparo la contraseña con la guardada
         if (!passwordEncoder.matches(request.password(), user.getPassword())) {
             throw new BadCredentialsException("Credenciales invalidas");
         }

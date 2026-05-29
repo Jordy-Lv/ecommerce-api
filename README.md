@@ -1,35 +1,27 @@
 # 🛒 E-Commerce API
 
-Una api que hice para practicar Spring Boot. Es básicamente el backend de una tienda online. Nada del otro mundo pero le metí varias cosas que fuí aprendiendo.
+API REST para un sistema de comercio electrónico, desarrollada con Spring Boot. Implementa las operaciones esenciales de una tienda online: gestión de productos, categorías, órdenes de compra y direcciones de envío, con autenticación basada en JWT.
 
 ## ¿Qué hace?
 
-Lo típico de un ecommerce: te registras, ves productos por categoría, armas una orden y la app te descuenta el stock automáticamente. También maneja direcciones de envío, estados de las órdenes, y tiene roles para que no cualquiera pueda modificar productos.
+Permite registrar usuarios, explorar productos por categoría, crear órdenes de compra con control automático de inventario, y gestionar el ciclo de vida de cada orden desde que se crea hasta que se entrega. Incluye dos roles de usuario: administrador y cliente, cada uno con distintos niveles de acceso.
 
-Lo fui armando por capas: primero las entidades con las relaciones entre sí, después los repositorios, luego la parte de seguridad, los servicios con la lógica, y al final los controladores que exponen todo.
+El proyecto se construyó por capas: modelo de datos, repositorios, seguridad, lógica de negocio y controladores REST, lo que facilita su mantenimiento y escalabilidad.
 
 ## Seguridad
 
-Usé JWT con Spring Security. Básicamente cuando te registras o inicias sesión te devuelve un token, y con eso ya puedes usar los endpoints protegidos. Las contraseñas van encriptadas con BCrypt, no se guardan en texto plano. También separé los permisos: un cliente normal puede ver productos y crear órdenes, pero solo un admin puede crear productos nuevos o cambiar categorías.
-
-## Lo que me gustó hacer
-
-- El servicio de órdenes fue lo más entretenido: valida stock, calcula el total, y si cancelas te devuelve los productos al inventario. Tuve un bug tonto al principio donde no validaba que la orden viniera con productos... pero ya lo arreglé.
-- Las excepciones personalizadas también quedaron bien. En vez de devolver errores genéricos, la api responde con mensajes claros en español.
-- Probé MapStruct por primera vez, está bueno para no andar haciendo conversiones a mano entre entidades y DTOs.
+La autenticación se maneja con JSON Web Tokens. Al registrarse o iniciar sesión, el servidor devuelve un token que debe incluirse en las peticiones protegidas. Las contraseñas se almacenan encriptadas con BCrypt. Los permisos están diferenciados por rol: los clientes acceden al catálogo y gestionan sus propias órdenes, mientras que los administradores pueden crear y modificar productos y categorías.
 
 ## Tecnologías
 
 - Java 21 con Spring Boot 3.3
-- MySQL 8, aunque se puede cambiar facil
-- Maven para las dependencias
-- Lombok y MapStruct para no escribir tanto código repetitivo
-- Swagger para documentar los endpoints
-- JUnit y Mockito para las pruebas
-- Docker por si alguien quiere probarlo sin instalar MySQL
+- MySQL 8
+- Maven
+- Lombok y MapStruct
+- Swagger
+- JUnit 5 y Mockito
+- Docker
 
-## Cómo está organizado
+## Estructura
 
-La arquitectura es la típica de Spring: controller → service → repository, con DTOs para lo que entra y sale. Las entidades mapean las tablas con JPA, los servicios tienen la lógica del negocio, y los controladores exponen los endpoints REST con las rutas bajo /api.
-
-Hay dos roles: ADMIN y CUSTOMER. Los endpoints que modifican productos o categorías requieren admin, el resto son públicos o solo piden estar logueado.
+El proyecto sigue el patrón controller → service → repository. Las entidades se mapean con JPA, los servicios contienen la lógica de negocio y las validaciones, y los controladores exponen los endpoints bajo el prefijo /api. La comunicación entre capas usa DTOs para mantener separadas las representaciones internas de las externas.
