@@ -1,115 +1,35 @@
-# E-Commerce API
+# 🛒 E-Commerce API
 
-API REST para una tienda online que hice para practicar Spring Boot. Maneja usuarios,
-productos, categorias, ordenes y direcciones. La autenticacion es con JWT y hay dos roles:
-ADMIN y CUSTOMER.
+Una api que hice para practicar Spring Boot. Es básicamente el backend de una tienda online. Nada del otro mundo pero le metí varias cosas que fuí aprendiendo.
 
-## Tecnologias que use
+## ¿Qué hace?
 
-- Java 21
-- Spring Boot 3.3
-- Spring Security + JWT (libreria jjwt)
-- Spring Data JPA
-- MySQL 8
-- Maven
-- Lombok
-- MapStruct
-- Swagger (springdoc openapi)
-- JUnit 5 y Mockito para los tests
-- Docker y Docker Compose
+Lo típico de un ecommerce: te registras, ves productos por categoría, armas una orden y la app te descuenta el stock automáticamente. También maneja direcciones de envío, estados de las órdenes, y tiene roles para que no cualquiera pueda modificar productos.
 
-## Como correrlo
+Lo fui armando por capas: primero las entidades con las relaciones entre sí, después los repositorios, luego la parte de seguridad, los servicios con la lógica, y al final los controladores que exponen todo.
 
-### Con Docker (lo mas facil)
+## Seguridad
 
-Solo necesitas tener Docker instalado y correr:
+Usé JWT con Spring Security. Básicamente cuando te registras o inicias sesión te devuelve un token, y con eso ya puedes usar los endpoints protegidos. Las contraseñas van encriptadas con BCrypt, no se guardan en texto plano. También separé los permisos: un cliente normal puede ver productos y crear órdenes, pero solo un admin puede crear productos nuevos o cambiar categorías.
 
-```
-docker compose up --build
-```
+## Lo que me gustó hacer
 
-Eso levanta la base de datos MySQL y la app. La API queda en http://localhost:8080
+- El servicio de órdenes fue lo más entretenido: valida stock, calcula el total, y si cancelas te devuelve los productos al inventario. Tuve un bug tonto al principio donde no validaba que la orden viniera con productos... pero ya lo arreglé.
+- Las excepciones personalizadas también quedaron bien. En vez de devolver errores genéricos, la api responde con mensajes claros en español.
+- Probé MapStruct por primera vez, está bueno para no andar haciendo conversiones a mano entre entidades y DTOs.
 
-### En local sin Docker
+## Tecnologías
 
-Necesitas tener MySQL corriendo y una base de datos llamada `ecommerce_db`. Despues:
+- Java 21 con Spring Boot 3.3
+- MySQL 8, aunque se puede cambiar facil
+- Maven para las dependencias
+- Lombok y MapStruct para no escribir tanto código repetitivo
+- Swagger para documentar los endpoints
+- JUnit y Mockito para las pruebas
+- Docker por si alguien quiere probarlo sin instalar MySQL
 
-```
-mvn spring-boot:run
-```
+## Cómo está organizado
 
-Las credenciales de la base se leen de variables de entorno pero tienen valores por defecto
-(root / root), asi que si tu MySQL local usa eso deberia funcionar directo.
+La arquitectura es la típica de Spring: controller → service → repository, con DTOs para lo que entra y sale. Las entidades mapean las tablas con JPA, los servicios tienen la lógica del negocio, y los controladores exponen los endpoints REST con las rutas bajo /api.
 
-## Swagger
-
-Una vez que la app esta corriendo puedes ver toda la documentacion en:
-
-```
-http://localhost:8080/swagger-ui.html
-```
-
-Ahi tambien puedes probar los endpoints. Para los que necesitan login primero haces el login,
-copias el token y lo pegas en el boton de Authorize (arriba a la derecha).
-
-## Usuarios de prueba
-
-Cuando arranca la app se cargan estos usuarios automaticamente:
-
-- Admin: admin@store.com / admin123
-- Cliente: user@store.com / user123
-
-## Endpoints principales
-
-Auth:
-- POST /api/auth/register
-- POST /api/auth/login
-
-Productos:
-- GET /api/products (publico, paginado, se puede filtrar con ?category=)
-- GET /api/products/{id}
-- POST /api/products (solo admin)
-- PUT /api/products/{id} (solo admin)
-- DELETE /api/products/{id} (solo admin)
-
-Categorias:
-- GET /api/categories
-- POST /api/categories (solo admin)
-
-Ordenes:
-- POST /api/orders (crea la orden y descuenta stock)
-- GET /api/orders (lista las tuyas, el admin ve todas)
-- GET /api/orders/{id}
-- DELETE /api/orders/{id} (cancela y devuelve el stock)
-- PATCH /api/orders/{id}/status (solo admin, cambia el estado)
-
-Direcciones:
-- GET /api/addresses
-- POST /api/addresses
-- DELETE /api/addresses/{id}
-
-## Estados de una orden
-
-Una orden empieza en PENDING. Los cambios de estado validos son:
-
-- PENDING -> CONFIRMED o CANCELLED
-- CONFIRMED -> SHIPPED o CANCELLED
-- SHIPPED -> DELIVERED
-- DELIVERED -> REFUNDED
-
-Si intentas un cambio que no esta permitido la API devuelve error 400.
-
-## Tests
-
-Para correr los tests:
-
-```
-mvn test
-```
-
-Hay tests para los servicios de ordenes, productos y autenticacion.
-
-## Notas
-
-Use ddl-auto en create-drop, asi que cada vez que reinicias la app se borra y vuelve a crear
-la base con los datos de prueba. Para algo real habria que cambiarlo, pero para probar va bien.
+Hay dos roles: ADMIN y CUSTOMER. Los endpoints que modifican productos o categorías requieren admin, el resto son públicos o solo piden estar logueado.
