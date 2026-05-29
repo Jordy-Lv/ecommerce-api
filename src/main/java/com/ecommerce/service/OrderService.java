@@ -46,6 +46,11 @@ public class OrderService {
     // Valida que haya stock suficiente, descuenta del inventario y calcula el total
     @Transactional
     public OrderResponse createOrder(User user, CreateOrderRequest request) {
+        // Me di cuenta que no validaba si la orden venia vacia, que pendejo
+        if (request.items() == null || request.items().isEmpty()) {
+            throw new IllegalArgumentException("La orden debe tener al menos un producto");
+        }
+
         // Busco la direccion de envio y verifico que sea del usuario
         Address address = addressRepository.findById(request.addressId())
                 .orElseThrow(() -> new EntityNotFoundException("Direccion no encontrada con id: " + request.addressId()));
