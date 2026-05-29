@@ -42,8 +42,16 @@ public class OrderService {
         this.orderMapper = orderMapper;
     }
 
+    // Crea una orden nueva a partir de los productos que el usuario eligio
+    // Valida que haya stock suficiente, descuenta del inventario y calcula el total
     @Transactional
     public OrderResponse createOrder(User user, CreateOrderRequest request) {
+        // Me di cuenta que no validaba si la orden venia vacia, que pendejo
+        if (request.items() == null || request.items().isEmpty()) {
+            throw new IllegalArgumentException("La orden debe tener al menos un producto");
+        }
+
+        // Busco la direccion de envio y verifico que sea del usuario
         Address address = addressRepository.findById(request.addressId())
                 .orElseThrow(() -> new EntityNotFoundException("Direccion no encontrada con id: " + request.addressId()));
 
@@ -51,6 +59,7 @@ public class OrderService {
             throw new AccessDeniedException("Esta direccion no te pertenece");
         }
 
+        // Armo la orden con estado PENDING
         Order order = Order.builder()
                 .user(user)
                 .shippingAddress(address)
@@ -59,14 +68,17 @@ public class OrderService {
 
         BigDecimal total = BigDecimal.ZERO;
 
+        // Recorro cada item del pedido, valido stock y voy calculando el total
         for (OrderItemRequest itemRequest : request.items()) {
             Product product = productRepository.findById(itemRequest.productId())
                     .orElseThrow(() -> new EntityNotFoundException("Producto no encontrado con id: " + itemRequest.productId()));
 
+            // Verifico que haya suficiente stock antes de continuar
             if (product.getStock() < itemRequest.quantity()) {
                 throw new InsufficientStockException("Stock insuficiente para: " + product.getName());
             }
 
+            // Descuento el stock del producto
             product.setStock(product.getStock() - itemRequest.quantity());
 
             OrderItem item = OrderItem.builder()
@@ -83,6 +95,7 @@ public class OrderService {
         return orderMapper.toResponse(orderRepository.save(order));
     }
 
+    // Devuelve las ordenes del usuario, si es admin ve todas
     public List<OrderResponse> getUserOrders(User user) {
         List<Order> orders = user.getRole() == Role.ADMIN
                 ? orderRepository.findAll()
@@ -91,21 +104,26 @@ public class OrderService {
         return orders.stream().map(orderMapper::toResponse).toList();
     }
 
+    // Busca una orden por id, solo el dueño o un admin pueden verla
     public OrderResponse getOrderById(User user, Long orderId) {
         Order order = getOrder(orderId);
         checkAccess(user, order);
         return orderMapper.toResponse(order);
     }
 
+    // Cancela una orden, solo si esta en PENDING o CONFIRMED
+    // Devuelve el stock al inventario cuando se cancela
     @Transactional
     public OrderResponse cancelOrder(User user, Long orderId) {
         Order order = getOrder(orderId);
         checkAccess(user, order);
 
+        // Solo se puede cancelar si no se ha enviado todavia
         if (order.getStatus() != OrderStatus.PENDING && order.getStatus() != OrderStatus.CONFIRMED) {
             throw new InvalidOrderStateException("Solo se pueden cancelar ordenes en estado PENDING o CONFIRMED");
         }
 
+        // Devuelvo los productos al stock
         for (OrderItem item : order.getItems()) {
             Product product = item.getProduct();
             product.setStock(product.getStock() + item.getQuantity());
@@ -115,10 +133,12 @@ public class OrderService {
         return orderMapper.toResponse(orderRepository.save(order));
     }
 
+    // Cambia el estado de una orden (solo admins), valida que la transicion sea permitida
     @Transactional
     public OrderResponse updateStatus(Long orderId, OrderStatus newStatus) {
         Order order = getOrder(orderId);
 
+        // Verifico que el cambio de estado sea valido segun el flujo definido
         if (!order.getStatus().canChangeTo(newStatus)) {
             throw new InvalidOrderStateException(
                     "Transicion no permitida de " + order.getStatus() + " a " + newStatus);
@@ -128,11 +148,13 @@ public class OrderService {
         return orderMapper.toResponse(orderRepository.save(order));
     }
 
+    // Metodo auxiliar para buscar ordenes sin repetir codigo
     private Order getOrder(Long orderId) {
         return orderRepository.findById(orderId)
                 .orElseThrow(() -> new EntityNotFoundException("Orden no encontrada con id: " + orderId));
     }
 
+    // Verifica que el usuario tenga permiso para ver/modificar la orden
     private void checkAccess(User user, Order order) {
         if (user.getRole() != Role.ADMIN && !order.getUser().getId().equals(user.getId())) {
             throw new AccessDeniedException("No puedes acceder a esta orden");
