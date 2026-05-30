@@ -43,6 +43,10 @@ public class ProductService {
     public ProductResponse create(CreateProductRequest request) {
         Category category = getCategory(request.categoryId());
 
+        if (productRepository.findByName(request.name()).isPresent()) {
+            throw new IllegalArgumentException("Ya existe un producto con ese nombre");
+        }
+
         Product product = Product.builder()
                 .name(request.name())
                 .description(request.description())
